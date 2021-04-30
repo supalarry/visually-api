@@ -2,7 +2,7 @@ import http from 'http';
 import express from 'express';
 import logging from './config/logging';
 import config from './config/config';
-import sampleRoutes from './routes/sample';
+import generateVideoRoutes from './routes/generateVideo';
 
 const NAMESPACE = 'Server';
 const router = express();
@@ -38,7 +38,7 @@ router.use((req, res, next) => {
 });
 
 /** Routes go here */
-router.use('/api/sample', sampleRoutes);
+router.use('/api/', generateVideoRoutes);
 
 /** Error handling */
 router.use((req, res, next) => {
