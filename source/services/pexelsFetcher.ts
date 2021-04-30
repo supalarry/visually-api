@@ -24,8 +24,13 @@ async function fetchVideo(query: string): Promise<Video> {
     let video: Video;
     try {
         const videos: Videos | ErrorResponse = await client.videos.search({ query, per_page: 1 });
-        video = (videos as Videos).videos[0];
-        return video;
+        if (!(videos as ErrorResponse).error) {
+            video = (videos as Videos).videos[0];
+            return video;
+        } else {
+            logging.error(NAMESPACE, `Failed fetching video ${query}`);
+            throw new Error((videos as ErrorResponse).error);
+        }
     } catch (error) {
         logging.error(NAMESPACE, `Failed fetching video ${query}`);
         throw new Error(error.message);
