@@ -8,3 +8,5 @@ certs/**/*
 *.key
 *.mobileprovision
 *.orig.*
+yarn-error.log
+.env

@@ -1,3 +1,5 @@
+import util from 'util';
+
 const info = (namespace: string, message: string, object?: any) => {
     if (object) {
         console.info(`[${getTimeStamp()}] [INFO] [${namespace}] ${message}`, object);
@@ -34,9 +36,14 @@ const getTimeStamp = (): string => {
     return new Date().toISOString();
 };
 
+const deepLog = <T>(object: T): void => {
+    console.log(util.inspect(object, { showHidden: false, depth: null }));
+};
+
 export default {
     info,
     warn,
     error,
-    debug
+    debug,
+    deepLog
 };

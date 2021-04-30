@@ -3,6 +3,6 @@ import controller from '../controllers/generateVideo';
 
 const router = express.Router();
 
-router.get('/videos/generate', controller.generateVideo);
+router.post('/videos/generate', controller.generateVideo);
 
 export = router;
