@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { transcribe } from '../services/watsonSpeechToText';
+import logging from '../config/logging';
 
 const NAMESPACE = 'generateText controller';
 
@@ -10,9 +11,10 @@ const NAMESPACE = 'generateText controller';
  */
 
 const generateText = async (req: Request, res: Response, next: NextFunction) => {
-    console.log(req.file);
-    console.log(req.body.name);
-    // transcribe();
+    if (req.file?.filename) {
+        const transcription = await transcribe(req.file.filename);
+        logging.deepLog(transcription);
+    }
     return res.status(200).json({
         status: 'transcribed'
     });

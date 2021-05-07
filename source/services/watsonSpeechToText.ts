@@ -17,47 +17,45 @@ const params = {
     timestamps: true
 };
 
-function transcribe() {
-    // Create the stream.
-    const recognizeStream = speechToText.recognizeUsingWebSocket(params);
+function transcribe(filename: string) {
+    return new Promise((resolve, reject) => {
+        // Create the stream.
+        const recognizeStream = speechToText.recognizeUsingWebSocket(params);
 
-    // Pipe in the audio.
-    const filePath = path.join(__dirname, '..', 'storage', 'audio.mp3');
-    fs.createReadStream(filePath).pipe(recognizeStream);
+        // Pipe in the audio.
+        const filePath = path.join(__dirname, '..', '..', 'uploads', filename);
+        fs.createReadStream(filePath).pipe(recognizeStream);
 
-    /*
-     * Uncomment the following two lines of code ONLY if `objectMode` is `false`.
-     *
-     * WHEN USED TOGETHER, the two lines pipe the final transcript to the named
-     * file and produce it on the console.
-     *
-     * WHEN USED ALONE, the following line pipes just the final transcript to
-     * the named file but produces numeric values rather than strings on the
-     * console.
-     */
-    // recognizeStream.pipe(fs.createWriteStream('transcription.txt'));
+        /*
+         * Uncomment the following two lines of code ONLY if `objectMode` is `false`.
+         *
+         * WHEN USED TOGETHER, the two lines pipe the final transcript to the named
+         * file and produce it on the console.
+         *
+         * WHEN USED ALONE, the following line pipes just the final transcript to
+         * the named file but produces numeric values rather than strings on the
+         * console.
+         */
+        // recognizeStream.pipe(fs.createWriteStream('transcription.txt'));
 
-    /*
-     * WHEN USED ALONE, the following line produces just the final transcript
-     * on the console.
-     */
-    // recognizeStream.setEncoding('utf8');
+        /*
+         * WHEN USED ALONE, the following line produces just the final transcript
+         * on the console.
+         */
+        // recognizeStream.setEncoding('utf8');
 
-    // Listen for events.
-    recognizeStream.on('data', function (event: unknown) {
-        onEvent('Data:', event);
+        const data: any = [];
+        // Listen for events.
+        recognizeStream.on('data', function (event: unknown) {
+            data.push(event);
+        });
+        recognizeStream.on('error', function (event: unknown) {
+            reject({ Error: event });
+        });
+        recognizeStream.on('close', function (event: unknown) {
+            resolve({ Data: data });
+        });
     });
-    recognizeStream.on('error', function (event: unknown) {
-        onEvent('Error:', event);
-    });
-    recognizeStream.on('close', function (event: unknown) {
-        onEvent('Close:', event);
-    });
-
-    // Display events on the console.
-    function onEvent(name: unknown, event: unknown) {
-        console.log(name, JSON.stringify(event, null, 2));
-    }
 }
 
 export { transcribe };
