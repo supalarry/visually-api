@@ -24,7 +24,8 @@ const generateText = async (req: Request, res: Response, next: NextFunction) => 
     logging.info(NAMESPACE, LogMessages.START_TRANSCRIPTION);
     try {
         const transcription = await transcribe(req.file.filename, req.file.mimetype, 'en-US_BroadbandModel');
-        logging.deepLog(transcription);
+        logging.deepLog(transcription.data);
+        logging.deepLog(transcription.text);
         return res.status(200).json({
             status: 'transcribed'
         });

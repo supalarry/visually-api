@@ -12,6 +12,11 @@ enum LoggingMessages {
     FINISHED = 'Fetching finished'
 }
 
+interface Transcription {
+    text: string;
+    data: TranscriptionResponse[];
+}
+
 /* Transcription response interfaces */
 interface TranscriptionResponse {
     result_index: number;
@@ -32,7 +37,7 @@ interface Alternative {
 // Word, it's starting time, it's ending time
 type Timestamp = [string, number, number];
 
-function transcribe(filename: string, mimetype: string, model: string): Promise<TranscriptionResponse[]> {
+function transcribe(filename: string, mimetype: string, model: string): Promise<Transcription> {
     const speechToText = new SpeechToTextV1({
         authenticator: new IamAuthenticator({
             apikey: process.env.WATSON_API_KEY!
@@ -57,10 +62,16 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         logging.info(NAMESPACE, `Start transcribing audio from ${filePath}`);
         fs.createReadStream(filePath).pipe(recognizeStream);
 
+        let text: string = '';
         const data: TranscriptionResponse[] = [];
         // Listen for events.
         recognizeStream.on('data', function (event: TranscriptionResponse) {
             data.push(event);
+            event.results.forEach((sentence) => {
+                sentence.alternatives.forEach((alternative) => {
+                    text += `${alternative.transcript}.`;
+                });
+            });
             logging.info(NAMESPACE, LoggingMessages.RECEIVED_DATA);
         });
         recognizeStream.on('error', function (event: unknown) {
@@ -69,7 +80,10 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         });
         recognizeStream.on('close', function (event: unknown) {
             logging.info(NAMESPACE, LoggingMessages.FINISHED);
-            resolve(data);
+            resolve({
+                text,
+                data
+            });
         });
     });
 }
