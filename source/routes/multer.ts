@@ -1,4 +1,10 @@
 import multer from 'multer';
+import logging from '../config/logging';
+
+const NAMESPACE = 'Multer';
+enum LoggingMessages {
+    INVALID_FILE_TYPE = 'Invalid file type'
+}
 
 const REQUEST_FILE_KEY = 'video';
 const DESTINATION_FOLDER = 'uploads/';
@@ -7,9 +13,11 @@ const DESTINATION_FOLDER = 'uploads/';
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, DESTINATION_FOLDER);
+        logging.info(NAMESPACE, `Audio destination folder: ${DESTINATION_FOLDER}`);
     },
     filename: (req, file, cb) => {
         cb(null, `${new Date().toISOString()}-${file.originalname}`);
+        logging.info(NAMESPACE, `Audio name: ${new Date().toISOString()}-${file.originalname}`);
     }
 });
 
@@ -18,7 +26,8 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
     const allowedTypes = ['audio/mpeg'];
 
     if (!allowedTypes.includes(file.mimetype)) {
-        return cb(null, false);
+        logging.error(NAMESPACE, LoggingMessages.INVALID_FILE_TYPE);
+        cb(null, false);
     }
     cb(null, true);
 };
