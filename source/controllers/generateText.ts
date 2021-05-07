@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { transcribe } from '../services/watson';
+import { transcribe, analyseTranscription } from '../services/watson';
 import logging from '../config/logging';
 
 const NAMESPACE = 'GenerateText controller';
@@ -24,8 +24,10 @@ const generateText = async (req: Request, res: Response, next: NextFunction) => 
     logging.info(NAMESPACE, LogMessages.START_TRANSCRIPTION);
     try {
         const transcription = await transcribe(req.file.filename, req.file.mimetype, 'en-US_BroadbandModel');
-        logging.deepLog(transcription.data);
-        logging.deepLog(transcription.text);
+        // logging.deepLog(transcription.data);
+        // logging.deepLog(transcription.text);
+        const analysis = await analyseTranscription(transcription);
+        logging.deepLog(analysis);
         return res.status(200).json({
             status: 'transcribed'
         });

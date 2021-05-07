@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import SpeechToTextV1 from 'ibm-watson/speech-to-text/v1';
+import NaturalLanguageUnderstandingV1 from 'ibm-watson/natural-language-understanding/v1';
 import { IamAuthenticator } from 'ibm-watson/auth';
 import logging from '../config/logging';
 
@@ -42,9 +43,9 @@ type Timestamp = [string, number, number];
 function transcribe(filename: string, mimetype: string, model: string): Promise<Transcription> {
     const speechToText = new SpeechToTextV1({
         authenticator: new IamAuthenticator({
-            apikey: process.env.WATSON_API_KEY!
+            apikey: process.env.WATSON_TRANSCRIBE_API_KEY!
         }),
-        serviceUrl: process.env.WATSON_API_URL!
+        serviceUrl: process.env.WATSON_TRANSCRIBE_API_URL!
     });
 
     const params = {
@@ -72,7 +73,7 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
             event.results.forEach((sentence) => {
                 sentence.alternatives.forEach((alternative) => {
                     // Add sentence to variable storing whole transcript
-                    text += `${alternative.transcript}.`;
+                    text += `${alternative.transcript.trim()}. `;
                     // Calculate length of the sentence
                     const startTimeOfFirsWord = alternative.timestamps[0][1];
                     const endTimeOfLastWord = alternative.timestamps[alternative.timestamps.length - 1][2];
@@ -95,4 +96,52 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
     });
 }
 
-export { transcribe, TranscriptionResponse };
+/* Language analysis interfaces */
+type NlpResponse = NaturalLanguageUnderstandingV1.Response<NaturalLanguageUnderstandingV1.AnalysisResults>;
+
+function analyseTranscription(transcription: Transcription): Promise<NlpResponse> {
+    logging.info(NAMESPACE, 'Starting transcription analysis');
+    const naturalLanguageUnderstanding = new NaturalLanguageUnderstandingV1({
+        version: '2021-03-25',
+        authenticator: new IamAuthenticator({
+            apikey: process.env.WATSON_NLU_API_KEY!
+        }),
+        serviceUrl: process.env.WATSON_NLU_API_URL!
+    });
+
+    logging.debug(NAMESPACE, transcription.text);
+    const analyzeParams = {
+        text: transcription.text,
+        features: {
+            keywords: {
+                emotion: true
+            },
+            entities: {
+                emotion: true
+            },
+            categories: {},
+            concepts: {},
+            syntax: {
+                sentences: true,
+                tokens: {
+                    lemma: true,
+                    part_of_speech: true
+                }
+            }
+        }
+    };
+
+    return new Promise((resolve, reject) => {
+        naturalLanguageUnderstanding
+            .analyze(analyzeParams)
+            .then((analysisResults) => {
+                resolve(analysisResults);
+            })
+            .catch((err) => {
+                reject(err);
+                logging.error(NAMESPACE, err.message, err);
+            });
+    });
+}
+
+export { transcribe, analyseTranscription };
