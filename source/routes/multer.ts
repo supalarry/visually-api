@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         cb(null, `${new Date().toISOString()}-${file.originalname}`);
-        logging.info(NAMESPACE, `Audio name: ${new Date().toISOString()}-${file.originalname}`);
+        logging.info(NAMESPACE, `Will save audio with name: ${new Date().toISOString()}-${file.originalname}`);
     }
 });
 
