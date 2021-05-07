@@ -30,6 +30,8 @@ interface Sentence {
 
 interface Alternative {
     transcript: string;
+    // duration is calculated manually
+    duration?: number;
     confidence: number;
     timestamps: Timestamp[];
 }
@@ -69,7 +71,12 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
             data.push(event);
             event.results.forEach((sentence) => {
                 sentence.alternatives.forEach((alternative) => {
+                    // Add sentence to variable storing whole transcript
                     text += `${alternative.transcript}.`;
+                    // Calculate length of the sentence
+                    const startTimeOfFirsWord = alternative.timestamps[0][1];
+                    const endTimeOfLastWord = alternative.timestamps[alternative.timestamps.length - 1][2];
+                    alternative.duration = endTimeOfLastWord - startTimeOfFirsWord;
                 });
             });
             logging.info(NAMESPACE, LoggingMessages.RECEIVED_DATA);
