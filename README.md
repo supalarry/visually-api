@@ -12,7 +12,7 @@ npm install
 
 3. Start project
 ```
-npm start
+nodemon source/server.ts
 ```
 
 4. Access API on `localhost:1337`
