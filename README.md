@@ -1,18 +1,18 @@
 # lilvideo
 
-## Installation
+## Lil Installation
 
-1. Install dependencies
+1. Install lil dependencies
 
 ```
 npm install
 ```
 
-2. Add `.env` file in the root repository & paste API keys
+2. Add `.env` file in the lil root repository & paste API keys
 
-3. Start project
+3. Start lil project
 ```
 nodemon source/server.ts
 ```
 
-4. Access API on `localhost:1337`
+4. Access lil API on `localhost:1337`
