@@ -16,3 +16,18 @@ nodemon source/server.ts
 ```
 
 4. Access lil API on `localhost:1337`
+
+## Usage
+
+The endpoints can be seen in.
+
+```
+source/routes
+```
+
+The controllers that actually run functionality for each route are stored in
+```
+source/controllers
+```
+
+In short, routes tell API endpoints, and controllers run functionality.
