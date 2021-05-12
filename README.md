@@ -19,7 +19,7 @@ nodemon source/server.ts
 
 ## Usage
 
-The endpoints can be seen in.
+The endpoints can be seen in. (ignore multer.ts in source file, it is a service)
 
 ```
 source/routes
