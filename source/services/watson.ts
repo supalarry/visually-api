@@ -43,6 +43,7 @@ interface Sentence {
     transcript: string;
     duration: number;
     timestamps: Timestamp[];
+    analysis?: NaturalLanguageUnderstandingV1.AnalysisResults | undefined;
 }
 
 function transcribe(filename: string, mimetype: string, model: string): Promise<Transcription> {
@@ -120,10 +121,7 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
     });
 }
 
-/* Language analysis interfaces */
-type NlpResponse = NaturalLanguageUnderstandingV1.Response<NaturalLanguageUnderstandingV1.AnalysisResults>;
-
-function analyseTranscription(transcription: Transcription): Promise<NlpResponse> {
+async function analyseTranscription(transcription: Transcription): Promise<Transcription> {
     logging.info(NAMESPACE, 'Starting transcription analysis');
     const naturalLanguageUnderstanding = new NaturalLanguageUnderstandingV1({
         version: '2021-03-25',
@@ -134,38 +132,32 @@ function analyseTranscription(transcription: Transcription): Promise<NlpResponse
     });
 
     logging.debug(NAMESPACE, transcription.text);
-    const analyzeParams = {
-        text: transcription.text,
-        features: {
-            keywords: {
-                emotion: true
-            },
-            entities: {
-                emotion: true
-            },
-            categories: {},
-            concepts: {},
-            syntax: {
-                sentences: true,
-                tokens: {
-                    lemma: true,
-                    part_of_speech: true
-                }
+    for (let sentence of transcription.sentences) {
+        const analyzeParams = {
+            text: sentence.transcript,
+            features: {
+                keywords: {
+                    // emotion: true
+                },
+                entities: {
+                    // emotion: true
+                },
+                categories: {},
+                concepts: {}
+                // syntax: {
+                //     sentences: true,
+                //     tokens: {
+                //         lemma: true,
+                //         part_of_speech: true
+                //     }
+                // }
             }
-        }
-    };
+        };
 
-    return new Promise((resolve, reject) => {
-        naturalLanguageUnderstanding
-            .analyze(analyzeParams)
-            .then((analysisResults) => {
-                resolve(analysisResults);
-            })
-            .catch((err) => {
-                reject(err);
-                logging.error(NAMESPACE, err.message, err);
-            });
-    });
+        const response = await naturalLanguageUnderstanding.analyze(analyzeParams);
+        sentence.analysis = response.result;
+    }
+    return transcription;
 }
 
 export { transcribe, analyseTranscription };

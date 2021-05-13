@@ -24,10 +24,11 @@ const generateText = async (req: Request, res: Response, next: NextFunction) => 
     logging.info(NAMESPACE, LogMessages.START_TRANSCRIPTION);
     try {
         const transcription = await transcribe(req.file.filename, req.file.mimetype, 'en-US_BroadbandModel');
-        logging.deepLog(transcription.text);
-        logging.deepLog(transcription.sentences);
-        // const analysis = await analyseTranscription(transcription);
-        // logging.deepLog(analysis);
+        // logging.deepLog(transcription.text);
+        // logging.deepLog(transcription.sentences);
+        const analysis = await analyseTranscription(transcription);
+        logging.debug(NAMESPACE, 'ALL THE WAY UP MY MAN');
+        logging.deepLog(analysis);
         return res.status(200).json({
             status: 'transcribed'
         });
