@@ -13,32 +13,37 @@ enum LoggingMessages {
     FINISHED = 'Fetching finished'
 }
 
-interface Transcription {
-    text: string;
-    data: TranscriptionResponse[];
-}
-
 /* Transcription response interfaces */
 interface TranscriptionResponse {
     result_index: number;
-    results: Sentence[];
+    results: Result[];
 }
 
-interface Sentence {
+interface Result {
     final: boolean;
     alternatives: Alternative[];
 }
 
 interface Alternative {
     transcript: string;
-    // duration is calculated manually
-    duration?: number;
     confidence: number;
     timestamps: Timestamp[];
 }
 
 // Word, it's starting time, it's ending time
 type Timestamp = [string, number, number];
+
+/* Transcription response converted to object for further usage */
+interface Transcription {
+    text: string;
+    sentences: Sentence[];
+}
+
+interface Sentence {
+    transcript: string;
+    duration: number;
+    timestamps: Timestamp[];
+}
 
 function transcribe(filename: string, mimetype: string, model: string): Promise<Transcription> {
     const speechToText = new SpeechToTextV1({
@@ -66,18 +71,37 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         fs.createReadStream(filePath).pipe(recognizeStream);
 
         let text: string = '';
-        const data: TranscriptionResponse[] = [];
+        const sentences: Sentence[] = [];
+        // sentences length
+        let length = 0;
+        const shortSentenceLength = 5;
         // Listen for events.
         recognizeStream.on('data', function (event: TranscriptionResponse) {
-            data.push(event);
-            event.results.forEach((sentence) => {
-                sentence.alternatives.forEach((alternative) => {
-                    // Add sentence to variable storing whole transcript
-                    text += `${alternative.transcript.trim()}. `;
-                    // Calculate length of the sentence
+            const results = event.results;
+            event.results.forEach((result, index) => {
+                result.alternatives.forEach((alternative) => {
+                    // Calculate duration of the sentence
                     const startTimeOfFirsWord = alternative.timestamps[0][1];
                     const endTimeOfLastWord = alternative.timestamps[alternative.timestamps.length - 1][2];
-                    alternative.duration = endTimeOfLastWord - startTimeOfFirsWord;
+                    const duration = endTimeOfLastWord - startTimeOfFirsWord;
+                    // Create sentence object
+                    let sentence: Sentence = {
+                        transcript: `${alternative.transcript.trim()}. `,
+                        duration,
+                        timestamps: alternative.timestamps
+                    };
+                    // Add sentence to variable storing whole transcript
+                    text += sentence.transcript;
+                    // Merge current sentence with previous if previous sentence is short
+                    // or it is the last sentence and the last sentence is short
+                    if ((length && sentences[length - 1].duration < shortSentenceLength) || (results[index + 1] === undefined && duration < 5)) {
+                        sentences[length - 1].transcript += sentence.transcript;
+                        sentences[length - 1].duration += sentence.duration;
+                        sentences[length - 1].timestamps = sentences[length - 1].timestamps.concat(sentence.timestamps);
+                    } else {
+                        sentences.push(sentence);
+                        length += 1;
+                    }
                 });
             });
             logging.info(NAMESPACE, LoggingMessages.RECEIVED_DATA);
@@ -90,7 +114,7 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
             logging.info(NAMESPACE, LoggingMessages.FINISHED);
             resolve({
                 text,
-                data
+                sentences
             });
         });
     });
