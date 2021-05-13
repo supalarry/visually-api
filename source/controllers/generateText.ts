@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { transcribe, analyseTranscription } from '../services/watson';
+import { fetchVideos } from '../services/pexelsFetcher';
 import logging from '../config/logging';
 
 const NAMESPACE = 'GenerateText controller';
@@ -26,8 +27,9 @@ const generateText = async (req: Request, res: Response, next: NextFunction) => 
         const transcription = await transcribe(req.file.filename, req.file.mimetype, 'en-US_BroadbandModel');
         // logging.deepLog(transcription.text);
         // logging.deepLog(transcription.sentences);
-        const analysis = await analyseTranscription(transcription);
-        // logging.deepLog(analysis);
+        await analyseTranscription(transcription);
+        await fetchVideos(transcription);
+        logging.deepLog(transcription);
         return res.status(200).json({
             status: 'transcribed'
         });

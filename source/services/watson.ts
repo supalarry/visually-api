@@ -4,6 +4,7 @@ import SpeechToTextV1 from 'ibm-watson/speech-to-text/v1';
 import NaturalLanguageUnderstandingV1, { KeywordsResult, EntitiesResult, ConceptsResult, CategoriesResult } from 'ibm-watson/natural-language-understanding/v1';
 import { IamAuthenticator } from 'ibm-watson/auth';
 import logging from '../config/logging';
+import { Video } from 'pexels';
 
 const NAMESPACE = 'Watson';
 
@@ -45,6 +46,7 @@ interface Sentence {
     timestamps: Timestamp[];
     analysis?: NaturalLanguageUnderstandingV1.AnalysisResults;
     relevanceRank?: (KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually)[];
+    videos?: Video[];
 }
 
 /* Watson interfaces modified */
@@ -196,4 +198,4 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
     return transcription;
 }
 
-export { transcribe, analyseTranscription };
+export { transcribe, analyseTranscription, Transcription };
