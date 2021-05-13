@@ -46,6 +46,7 @@ interface Sentence {
     timestamps: Timestamp[];
     analysis?: NaturalLanguageUnderstandingV1.AnalysisResults;
     relevanceRank?: (KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually)[];
+    selectedForVideo?: KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually;
     videos?: Video[];
 }
 
@@ -140,7 +141,7 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
         serviceUrl: process.env.WATSON_NLU_API_URL!
     });
 
-    logging.debug(NAMESPACE, transcription.text);
+    let sentenceCounter = 0;
     for (let sentence of transcription.sentences) {
         const analyzeParams = {
             text: sentence.transcript,
@@ -165,7 +166,6 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
 
         const response = await naturalLanguageUnderstanding.analyze(analyzeParams);
         sentence.analysis = response.result;
-        logging.debug(NAMESPACE, 'ANALYSIS', sentence.analysis);
         // Pack together keywords, entities & concepts because they are more specific than categories
         sentence.relevanceRank = [...sentence.analysis.keywords!, ...sentence.analysis.entities!, ...sentence.analysis.concepts!];
         // Filter out low confidence entries
@@ -193,9 +193,18 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
             return visuallyCategory;
         });
         sentence.relevanceRank = [...sentence.relevanceRank, ...categories];
-        logging.debug(NAMESPACE, 'RANK', sentence.relevanceRank);
+        // Adjust sentence length to fill the gaps between sentences
+        if (sentenceCounter < 1) {
+            sentence.duration = sentence.duration + sentence.timestamps[0][1];
+        } else {
+            const previousSentence = transcription.sentences[sentenceCounter - 1];
+            const previousSentenceTimestamps = previousSentence.timestamps;
+            const previousSentenceLastTimestamp = previousSentenceTimestamps[previousSentenceTimestamps.length - 1][2];
+            sentence.duration += previousSentenceLastTimestamp;
+        }
+        sentenceCounter += 1;
     }
     return transcription;
 }
 
-export { transcribe, analyseTranscription, Transcription };
+export { transcribe, analyseTranscription, Transcription, Sentence };

@@ -45,8 +45,8 @@ async function fetchVideosForSearchTerm(query: string | undefined): Promise<Vide
 async function fetchVideos(transcription: Transcription) {
     for (let sentence of transcription.sentences) {
         const selectedVideos: Video[] = [];
+        let relevanceRank = 0;
         do {
-            let relevanceRank = 0;
             const fetchedVideos = await fetchVideosForSearchTerm(sentence.relevanceRank?.[relevanceRank].text);
             // check if search term returned any videos
             if (!fetchVideos.length) {
@@ -54,6 +54,7 @@ async function fetchVideos(transcription: Transcription) {
                 relevanceRank += 1;
                 continue;
             }
+            relevanceRank = 0;
             // check how many videos to include based on sentence length
             let count = 0;
             let selectedVideoDuration = 0;
@@ -65,14 +66,17 @@ async function fetchVideos(transcription: Transcription) {
                     break;
                 }
             }
-            // remove time from last video to match sentence length
-            fetchedVideos[count - 1].duration -= selectedVideoDuration - sentence.duration;
             // select videos for the sentence
+            // TODO: you can just do this within the previous for let loop
             let i = 0;
             while (i < count) {
                 selectedVideos.push(fetchedVideos[i]);
                 i += 1;
             }
+            // remove time from last video to match sentence length
+            selectedVideos[selectedVideos.length - 1].duration -= selectedVideoDuration - sentence.duration;
+            // note the selected item for which videos were fetched
+            sentence.selectedForVideo = sentence.relevanceRank?.[relevanceRank];
         } while (!selectedVideos.length);
 
         sentence.videos = selectedVideos;

@@ -1,6 +1,7 @@
 import { Video } from 'pexels';
 import axios from 'axios';
 import logging from '../config/logging';
+import { Transcription, Sentence } from './watson';
 
 const NAMESPACE = 'Shotstack Editor';
 const RENDER_ENDPOINT = '/render/';
@@ -18,6 +19,12 @@ interface Output {
 
 interface Timeline {
     tracks: Track[];
+    soundtrack: Soundtrack;
+}
+
+interface Soundtrack {
+    src: string;
+    effect: string;
 }
 
 interface Track {
@@ -52,14 +59,18 @@ interface ShotstackResponse {
     };
 }
 
-async function submitVideosForRendering(videos: Video[]): Promise<ShotstackResponse> {
+async function submitVideosForRendering(transcription: Transcription, audioUrl: string): Promise<ShotstackResponse> {
     logging.info(NAMESPACE, 'Submitting videos for rendering');
     // set up timeline
-    const clips: Asset[] = extractVideoAssets(videos);
+    const clips: Asset[] = extractVideoAssets(transcription.sentences);
     const track: Track = { clips };
     const tracks: Track[] = [];
     tracks.push(track);
-    const timeline: Timeline = { tracks };
+    const soundtrack: Soundtrack = {
+        src: 'https://firebasestorage.googleapis.com/v0/b/visually-de279.appspot.com/o/tigers.mp3?alt=media&token=4d720ce9-0019-42a2-8ea7-e9910c03782e',
+        effect: 'fadeOut'
+    };
+    const timeline: Timeline = { tracks, soundtrack };
     // set up output
     const output: Output = { format: 'mp4', resolution: 'sd' };
     // combine timeline & output into final object
@@ -80,21 +91,23 @@ async function submitVideosForRendering(videos: Video[]): Promise<ShotstackRespo
     }
 }
 
-function extractVideoAssets(videos: Video[]): Asset[] {
+function extractVideoAssets(sentences: Sentence[]): Asset[] {
     let videosFiles: Asset[] = [];
     let mergedVideoLength = 0;
     let currentVideoIndex = 0;
-    for (let video of videos) {
-        videosFiles[currentVideoIndex] = {
-            asset: {
-                type: 'video',
-                src: video.video_files[0].link
-            },
-            start: mergedVideoLength,
-            length: video.duration
-        };
-        mergedVideoLength += video.duration;
-        currentVideoIndex += 1;
+    for (let sentence of sentences) {
+        for (let video of sentence.videos!) {
+            videosFiles[currentVideoIndex] = {
+                asset: {
+                    type: 'video',
+                    src: video.video_files[0].link
+                },
+                start: mergedVideoLength,
+                length: video.duration
+            };
+            mergedVideoLength += video.duration;
+            currentVideoIndex += 1;
+        }
     }
     return videosFiles;
 }
