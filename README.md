@@ -1,4 +1,4 @@
-# lilvideo
+# visually
 
 ## Lil Installation
 
