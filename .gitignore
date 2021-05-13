@@ -11,3 +11,4 @@ certs/**/*
 yarn-error.log
 .env
 uploads
+source/services/firebase-credentials.json
