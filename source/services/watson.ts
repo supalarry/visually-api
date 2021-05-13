@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import SpeechToTextV1 from 'ibm-watson/speech-to-text/v1';
-import NaturalLanguageUnderstandingV1 from 'ibm-watson/natural-language-understanding/v1';
+import NaturalLanguageUnderstandingV1, { KeywordsResult, EntitiesResult, ConceptsResult, CategoriesResult } from 'ibm-watson/natural-language-understanding/v1';
 import { IamAuthenticator } from 'ibm-watson/auth';
 import logging from '../config/logging';
 
@@ -43,7 +43,14 @@ interface Sentence {
     transcript: string;
     duration: number;
     timestamps: Timestamp[];
-    analysis?: NaturalLanguageUnderstandingV1.AnalysisResults | undefined;
+    analysis?: NaturalLanguageUnderstandingV1.AnalysisResults;
+    relevanceRank?: (KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually)[];
+}
+
+/* Watson interfaces modified */
+interface CategoriesResultVisually extends CategoriesResult {
+    text: string;
+    relevance: number;
 }
 
 function transcribe(filename: string, mimetype: string, model: string): Promise<Transcription> {
@@ -156,6 +163,35 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
 
         const response = await naturalLanguageUnderstanding.analyze(analyzeParams);
         sentence.analysis = response.result;
+        logging.debug(NAMESPACE, 'ANALYSIS', sentence.analysis);
+        // Pack together keywords, entities & concepts because they are more specific than categories
+        sentence.relevanceRank = [...sentence.analysis.keywords!, ...sentence.analysis.entities!, ...sentence.analysis.concepts!];
+        // Filter out low confidence entries
+        sentence.relevanceRank = sentence.relevanceRank.filter((item) => {
+            if ('relevance' in item) {
+                return item.relevance! > 0.6;
+            }
+            return false;
+        });
+        // Sort entries by relevance
+        sentence.relevanceRank.sort((a, b) => {
+            if ('relevance' in a && 'relevance' in b) {
+                return b.relevance! - a.relevance!;
+            }
+            return 1;
+        });
+        // Add categories at the end of keywords, entities & concepts after
+        // transforming categories returned from watson to a structure that matches
+        // the structure of keywords, entitites & concepts
+        const categories = sentence.analysis.categories!.map((category) => {
+            let visuallyCategory: CategoriesResultVisually = {
+                text: category.label!,
+                relevance: category.score!
+            };
+            return visuallyCategory;
+        });
+        sentence.relevanceRank = [...sentence.relevanceRank, ...categories];
+        logging.debug(NAMESPACE, 'RANK', sentence.relevanceRank);
     }
     return transcription;
 }
