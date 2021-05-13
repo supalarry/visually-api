@@ -18,6 +18,7 @@ enum LoggingMessages {
 interface TranscriptionResponse {
     result_index: number;
     results: Result[];
+    processing_metrics?: any;
 }
 
 interface Result {
@@ -38,6 +39,7 @@ type Timestamp = [string, number, number];
 interface Transcription {
     text: string;
     sentences: Sentence[];
+    originalAudioDuration: number;
 }
 
 interface Sentence {
@@ -68,8 +70,12 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         objectMode: true,
         contentType: mimetype,
         model: model,
-        timestamps: true
+        timestamps: true,
+        processingMetrics: true,
+        processingMetricsInterval: 99999999999999999999999999999999999
     };
+
+    let audioDuration: number = 0;
 
     return new Promise((resolve, reject) => {
         // Create the stream.
@@ -89,6 +95,9 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         // Listen for events.
         recognizeStream.on('data', function (event: TranscriptionResponse) {
             const results = event.results;
+            if (event?.processing_metrics?.processed_audio?.received) {
+                audioDuration = Math.ceil(event.processing_metrics.processed_audio.received);
+            }
             event.results.forEach((result, index) => {
                 result.alternatives.forEach((alternative) => {
                     // Calculate duration of the sentence
@@ -125,7 +134,8 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
             logging.info(NAMESPACE, LoggingMessages.FINISHED);
             resolve({
                 text,
-                sentences
+                sentences,
+                originalAudioDuration: audioDuration
             });
         });
     });
@@ -142,6 +152,7 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
     });
 
     let sentenceCounter = 0;
+    const sentencesCount = transcription.sentences.length;
     for (let sentence of transcription.sentences) {
         const analyzeParams = {
             text: sentence.transcript,
@@ -195,15 +206,23 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
         sentence.relevanceRank = [...sentence.relevanceRank, ...categories];
         // Adjust sentence length to fill the gaps between sentences
         if (sentenceCounter < 1) {
-            sentence.duration = sentence.duration + sentence.timestamps[0][1];
-        } else {
+            // very first video
+            const timestamps = sentence.timestamps;
+            sentence.duration = timestamps[timestamps.length - 1][2];
+        } else if (sentenceCounter + 1 !== sentencesCount) {
+            // every video except first and last
             const previousSentence = transcription.sentences[sentenceCounter - 1];
             const previousSentenceTimestamps = previousSentence.timestamps;
             const previousSentenceLastTimestamp = previousSentenceTimestamps[previousSentenceTimestamps.length - 1][2];
-            sentence.duration += previousSentenceLastTimestamp;
+            const timestamps = sentence.timestamps;
+            sentence.duration = timestamps[timestamps.length - 1][2] - previousSentenceLastTimestamp;
+        } else {
+            const timestamps = sentence.timestamps;
+            sentence.duration = transcription.originalAudioDuration - timestamps[0][1];
         }
         sentenceCounter += 1;
     }
+    logging.info(NAMESPACE, 'Finished transcription analysis');
     return transcription;
 }
 

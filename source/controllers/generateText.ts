@@ -30,12 +30,12 @@ const generateText = async (req: Request, res: Response, next: NextFunction) => 
         // logging.deepLog(transcription.text);
         // logging.deepLog(transcription.sentences);
         await analyseTranscription(transcription);
-        await fetchVideos(transcription);
-        const audioUrl = path.join(__dirname, '..', '..', 'uploads', req.file.mimetype);
-        // const response = await submitVideosForRendering(transcription, audioUrl);
-        // const renderedVideoUrl = await pollShotstackForRenderedVideo(response);
         logging.debug(NAMESPACE, 'T R A N S C R I P T I O N');
         logging.deepLog(transcription);
+        await fetchVideos(transcription);
+        const audioUrl = path.join(__dirname, '..', '..', 'uploads', req.file.mimetype);
+        const response = await submitVideosForRendering(transcription, audioUrl);
+        const renderedVideoUrl = await pollShotstackForRenderedVideo(response);
         return res.status(200).json({
             // url: renderedVideoUrl,
             url: audioUrl

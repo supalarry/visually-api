@@ -28,21 +28,22 @@ async function fetchVideosForSearchTerm(query: string | undefined): Promise<Vide
         throw new Error('Fetching falsey value to fetchVideo is not allowed');
     }
     try {
-        const videos: Videos | ErrorResponse = await client.videos.search({ query, per_page: 1 });
+        const videos: Videos | ErrorResponse = await client.videos.search({ query, per_page: 10 });
         if (!(videos as ErrorResponse).error) {
             video = (videos as Videos).videos;
             return video;
         } else {
-            logging.error(NAMESPACE, `Failed fetching video ${query}`);
             throw new Error((videos as ErrorResponse).error);
         }
     } catch (error) {
-        logging.error(NAMESPACE, `Failed fetching video ${query}`);
+        logging.error(NAMESPACE, `Failed fetching video "${query}"`);
+        logging.error(NAMESPACE, `Fetching failure reason: ${error.message}`);
         throw new Error(error.message);
     }
 }
 
 async function fetchVideos(transcription: Transcription) {
+    logging.info(NAMESPACE, 'Start fetching videos');
     for (let sentence of transcription.sentences) {
         const selectedVideos: Video[] = [];
         let relevanceRank = 0;
@@ -55,32 +56,25 @@ async function fetchVideos(transcription: Transcription) {
                 continue;
             }
             relevanceRank = 0;
-            // check how many videos to include based on sentence length
-            let count = 0;
+            // check how many videos to include based on sentence duration
             let selectedVideoDuration = 0;
             for (let video of fetchedVideos) {
                 if (selectedVideoDuration < sentence.duration) {
-                    count += 1;
+                    selectedVideos.push(video);
                     selectedVideoDuration += video.duration;
                 } else {
+                    // trim last video to match sentence length
+                    selectedVideos[selectedVideos.length - 1].duration -= selectedVideoDuration - sentence.duration;
                     break;
                 }
             }
-            // select videos for the sentence
-            // TODO: you can just do this within the previous for let loop
-            let i = 0;
-            while (i < count) {
-                selectedVideos.push(fetchedVideos[i]);
-                i += 1;
-            }
-            // remove time from last video to match sentence length
-            selectedVideos[selectedVideos.length - 1].duration -= selectedVideoDuration - sentence.duration;
             // note the selected item for which videos were fetched
             sentence.selectedForVideo = sentence.relevanceRank?.[relevanceRank];
         } while (!selectedVideos.length);
 
         sentence.videos = selectedVideos;
     }
+    logging.info(NAMESPACE, 'Finished fetching videos');
 }
 
 export { fetchVideos };
