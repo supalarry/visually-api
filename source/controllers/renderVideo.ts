@@ -29,14 +29,11 @@ const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
         const transcription = await transcribe(req.file.filename, req.file.mimetype, 'en-US_BroadbandModel');
         await analyseTranscription(transcription);
         await fetchVideos(transcription);
-        // logging.debug(NAMESPACE, 'T R A N S C R I P T I O N');
-        // logging.deepLog(transcription);
         const audioUrl = path.join(__dirname, '..', '..', 'uploads', req.file.mimetype);
-        // const response = await submitVideosForRendering(transcription, audioUrl);
-        // const renderedVideoUrl = await pollShotstackForRenderedVideo(response);
+        const response = await submitVideosForRendering(transcription, audioUrl);
+        const renderedVideoUrl = await pollShotstackForRenderedVideo(response);
         return res.status(200).json({
-            // url: renderedVideoUrl,
-            url: audioUrl
+            url: renderedVideoUrl
         });
     } catch (error) {
         logging.error(NAMESPACE, error.message);

@@ -64,25 +64,33 @@ interface CategoriesResultVisually extends CategoriesResult {
 }
 
 function transcribe(filename: string, mimetype: string, model: string): Promise<Transcription> {
+    // Watson set up
     const speechToText = new SpeechToTextV1({
         authenticator: new IamAuthenticator({
             apikey: process.env.WATSON_TRANSCRIBE_API_KEY!
         }),
         serviceUrl: process.env.WATSON_TRANSCRIBE_API_URL!
     });
-
+    // Describe transcription settings
     const params = {
         objectMode: true,
         contentType: mimetype,
         model: model,
         timestamps: true,
         processingMetrics: true,
+        // Big number that needs to be longer than video length, so that the
+        // metrics interval is the whole video.
         processingMetricsInterval: 99999999999999999999999999999999999
     };
-
-    let statistics: Statistics = {
-        audioDuration: 0,
-        sentencesCount: 0
+    // Object that the function will return. It will store
+    // extracted information returned by Watson
+    let transcription: Transcription = {
+        text: '',
+        sentences: [],
+        statistics: {
+            audioDuration: 0,
+            sentencesCount: 0
+        }
     };
 
     return new Promise((resolve, reject) => {
@@ -95,16 +103,13 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         logging.info(NAMESPACE, `Start transcribing audio from ${filePath}`);
         fs.createReadStream(filePath).pipe(recognizeStream);
 
-        let text: string = '';
-        const sentences: Sentence[] = [];
         // sentences length
-        let length = 0;
         const shortSentenceLength = 5;
         // Listen for events.
         recognizeStream.on('data', function (event: TranscriptionResponse) {
             const results = event.results;
             if (event?.processing_metrics?.processed_audio?.received) {
-                statistics.audioDuration = Math.ceil(event.processing_metrics.processed_audio.received);
+                transcription.statistics.audioDuration = Math.ceil(event.processing_metrics.processed_audio.received);
             }
             event.results.forEach((result, index) => {
                 result.alternatives.forEach((alternative) => {
@@ -119,16 +124,17 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
                         timestamps: alternative.timestamps
                     };
                     // Add sentence to variable storing whole transcript
-                    text += sentence.transcript;
+                    transcription.text += sentence.transcript;
                     // Merge current sentence with previous if previous sentence is short
                     // or it is the last sentence and the last sentence is short
-                    if ((length && sentences[length - 1].duration < shortSentenceLength) || (results[index + 1] === undefined && duration < 5)) {
-                        sentences[length - 1].transcript += sentence.transcript;
-                        sentences[length - 1].duration += sentence.duration;
-                        sentences[length - 1].timestamps = sentences[length - 1].timestamps.concat(sentence.timestamps);
+                    const count = transcription.statistics.sentencesCount;
+                    if ((count && transcription.sentences[count - 1].duration < shortSentenceLength) || (results[index + 1] === undefined && duration < 5)) {
+                        transcription.sentences[count - 1].transcript += sentence.transcript;
+                        transcription.sentences[count - 1].duration += sentence.duration;
+                        transcription.sentences[count - 1].timestamps = transcription.sentences[count - 1].timestamps.concat(sentence.timestamps);
                     } else {
-                        sentences.push(sentence);
-                        length += 1;
+                        transcription.sentences.push(sentence);
+                        transcription.statistics.sentencesCount += 1;
                     }
                 });
             });
@@ -140,12 +146,7 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         });
         recognizeStream.on('close', function (event: unknown) {
             logging.info(NAMESPACE, LoggingMessages.FINISHED);
-            statistics.sentencesCount = length;
-            resolve({
-                text,
-                sentences,
-                statistics
-            });
+            resolve(transcription);
         });
     });
 }
