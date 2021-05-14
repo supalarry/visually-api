@@ -1,6 +1,6 @@
 import express from 'express';
 import { renderVideo } from '../controllers/renderVideo';
-import { upload, REQUEST_FILE_KEY } from './multer';
+import { upload, REQUEST_FILE_KEY } from '../middlewares/multer';
 
 const router = express.Router();
 
