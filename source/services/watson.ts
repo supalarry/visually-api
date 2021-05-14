@@ -153,7 +153,7 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
 async function analyseTranscription(transcription: Transcription): Promise<Transcription> {
     logging.info(NAMESPACE, 'Starting transcription analysis');
     const naturalLanguageUnderstanding = new NaturalLanguageUnderstandingV1({
-        version: '2021-03-25',
+        version: process.env.WATSON_NLU_VERSION,
         authenticator: new IamAuthenticator({
             apikey: process.env.WATSON_NLU_API_KEY!
         }),

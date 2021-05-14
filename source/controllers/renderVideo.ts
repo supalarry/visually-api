@@ -27,8 +27,6 @@ const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
     logging.info(NAMESPACE, LogMessages.START_TRANSCRIPTION);
     try {
         const transcription = await transcribe(req.file.filename, req.file.mimetype, 'en-US_BroadbandModel');
-        // logging.deepLog(transcription.text);
-        // logging.deepLog(transcription.sentences);
         await analyseTranscription(transcription);
         await fetchVideos(transcription);
         // logging.debug(NAMESPACE, 'T R A N S C R I P T I O N');
