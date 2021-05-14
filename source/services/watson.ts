@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import SpeechToTextV1 from 'ibm-watson/speech-to-text/v1';
-import NaturalLanguageUnderstandingV1, { KeywordsResult, EntitiesResult, ConceptsResult, CategoriesResult } from 'ibm-watson/natural-language-understanding/v1';
+import NaturalLanguageUnderstandingV1, { KeywordsResult, EntitiesResult, ConceptsResult, CategoriesResult, AnalysisResults } from 'ibm-watson/natural-language-understanding/v1';
 import { IamAuthenticator } from 'ibm-watson/auth';
 import logging from '../config/logging';
 import { Video } from 'pexels';
@@ -46,10 +46,14 @@ interface Sentence {
     transcript: string;
     duration: number;
     timestamps: Timestamp[];
-    analysis?: NaturalLanguageUnderstandingV1.AnalysisResults;
-    relevanceRank?: (KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually)[];
-    selectedForVideo?: KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually;
+    analysis: Analysis;
     videos?: Video[];
+}
+
+interface Analysis {
+    results?: NaturalLanguageUnderstandingV1.AnalysisResults;
+    rank?: (KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually)[];
+    fetchedVideoFor?: KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually;
 }
 
 interface Statistics {
@@ -103,39 +107,16 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         logging.info(NAMESPACE, `Start transcribing audio from ${filePath}`);
         fs.createReadStream(filePath).pipe(recognizeStream);
 
-        // sentences length
-        const shortSentenceLength = 5;
-        // Listen for events.
         recognizeStream.on('data', function (event: TranscriptionResponse) {
-            const results = event.results;
             if (event?.processing_metrics?.processed_audio?.received) {
                 transcription.statistics.audioDuration = Math.ceil(event.processing_metrics.processed_audio.received);
             }
             event.results.forEach((result, index) => {
                 result.alternatives.forEach((alternative) => {
-                    // Calculate duration of the sentence
-                    const startTimeOfFirsWord = alternative.timestamps[0][1];
-                    const endTimeOfLastWord = alternative.timestamps[alternative.timestamps.length - 1][2];
-                    const duration = endTimeOfLastWord - startTimeOfFirsWord;
-                    // Create sentence object
-                    let sentence: Sentence = {
-                        transcript: `${alternative.transcript.trim()}. `,
-                        duration,
-                        timestamps: alternative.timestamps
-                    };
-                    // Add sentence to variable storing whole transcript
+                    let sentence = createSentenceFrom(alternative, transcription);
                     transcription.text += sentence.transcript;
-                    // Merge current sentence with previous if previous sentence is short
-                    // or it is the last sentence and the last sentence is short
-                    const count = transcription.statistics.sentencesCount;
-                    if ((count && transcription.sentences[count - 1].duration < shortSentenceLength) || (results[index + 1] === undefined && duration < 5)) {
-                        transcription.sentences[count - 1].transcript += sentence.transcript;
-                        transcription.sentences[count - 1].duration += sentence.duration;
-                        transcription.sentences[count - 1].timestamps = transcription.sentences[count - 1].timestamps.concat(sentence.timestamps);
-                    } else {
-                        transcription.sentences.push(sentence);
-                        transcription.statistics.sentencesCount += 1;
-                    }
+                    const isLastSentence = event.results[index + 1] === undefined;
+                    addSentence(sentence, isLastSentence, transcription);
                 });
             });
             logging.info(NAMESPACE, LoggingMessages.RECEIVED_DATA);
@@ -146,9 +127,74 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         });
         recognizeStream.on('close', function (event: unknown) {
             logging.info(NAMESPACE, LoggingMessages.FINISHED);
+            updateLastSentenceDuration(transcription);
             resolve(transcription);
         });
     });
+}
+
+function createSentenceFrom(watsonSentence: Alternative, transcription: Transcription): Sentence {
+    // empty return object stub
+    let sentence: Sentence = {
+        transcript: '',
+        timestamps: [],
+        duration: 0,
+        analysis: {}
+    };
+
+    // set transcript
+    sentence.transcript = `${watsonSentence.transcript.trim()}. `;
+
+    // set timestamps
+    sentence.timestamps = watsonSentence.timestamps;
+
+    // set duration
+    const sentencesCount = transcription.statistics.sentencesCount;
+    const timestamps = sentence.timestamps;
+    const sentenceLastTimestamp = timestamps[timestamps.length - 1][2];
+    if (sentencesCount === 0) {
+        sentence.duration = sentenceLastTimestamp;
+    } else {
+        const previousSentence = transcription.sentences[sentencesCount - 1];
+        const previousSentenceTimestamps = previousSentence.timestamps;
+        const previousSentenceLastTimestamp = previousSentenceTimestamps[previousSentenceTimestamps.length - 1][2];
+        sentence.duration = sentenceLastTimestamp - previousSentenceLastTimestamp;
+    }
+
+    return sentence;
+}
+
+function addSentence(sentence: Sentence, isLastSentence: boolean, transcription: Transcription) {
+    // If sentence length is shorter than this many seconds, it needs to be merged
+    // with another sentence
+    const treshold = 5;
+
+    const count = transcription.statistics.sentencesCount;
+    const previousSentence = count > 0 ? transcription.sentences[count - 1] : null;
+    /* Merge previous sentence with current if
+     ** 1. previous sentence is shorter than treshold
+     ** if current sentence is the last one and is shorter than treshold
+     */
+    if ((count && previousSentence!.duration < treshold) || (isLastSentence && sentence.duration < treshold)) {
+        previousSentence!.transcript += sentence.transcript;
+        previousSentence!.duration += sentence.duration;
+        previousSentence!.timestamps = previousSentence!.timestamps.concat(sentence.timestamps);
+    } else {
+        transcription.sentences.push(sentence);
+        transcription.statistics.sentencesCount += 1;
+    }
+}
+
+function updateLastSentenceDuration(transcription: Transcription) {
+    // Watson gives information about how long the whole audio is only at the end of transcription.
+    // We want that time between last sentences last word timestamp & end of audio also counts
+    // as a part of last sentence, so that a video can be fit there.
+
+    const sentences = transcription.sentences;
+    const lastSentence = sentences[sentences.length - 1];
+    const lastWordEndingTimestamp = lastSentence.timestamps[0][2];
+
+    lastSentence.duration = transcription.statistics.audioDuration - lastWordEndingTimestamp;
 }
 
 async function analyseTranscription(transcription: Transcription): Promise<Transcription> {
@@ -161,79 +207,52 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
         serviceUrl: process.env.WATSON_NLU_API_URL!
     });
 
-    let sentenceCounter = 0;
-    const sentencesCount = transcription.sentences.length;
-    for (let sentence of transcription.sentences) {
-        const analyzeParams = {
-            text: sentence.transcript,
-            features: {
-                keywords: {
-                    // emotion: true
-                },
-                entities: {
-                    // emotion: true
-                },
-                categories: {},
-                concepts: {}
-                // syntax: {
-                //     sentences: true,
-                //     tokens: {
-                //         lemma: true,
-                //         part_of_speech: true
-                //     }
-                // }
-            }
-        };
-
-        const response = await naturalLanguageUnderstanding.analyze(analyzeParams);
-        sentence.analysis = response.result;
-        // Pack together keywords, entities & concepts because they are more specific than categories
-        sentence.relevanceRank = [...sentence.analysis.keywords!, ...sentence.analysis.entities!, ...sentence.analysis.concepts!];
-        // Filter out low confidence entries
-        sentence.relevanceRank = sentence.relevanceRank.filter((item) => {
-            if ('relevance' in item) {
-                return item.relevance! > 0.6;
-            }
-            return false;
-        });
-        // Sort entries by relevance
-        sentence.relevanceRank.sort((a, b) => {
-            if ('relevance' in a && 'relevance' in b) {
-                return b.relevance! - a.relevance!;
-            }
-            return 1;
-        });
-        // Add categories at the end of keywords, entities & concepts after
-        // transforming categories returned from watson to a structure that matches
-        // the structure of keywords, entitites & concepts
-        const categories = sentence.analysis.categories!.map((category) => {
-            let visuallyCategory: CategoriesResultVisually = {
-                text: category.label!,
-                relevance: category.score!
-            };
-            return visuallyCategory;
-        });
-        sentence.relevanceRank = [...sentence.relevanceRank, ...categories];
-        // Adjust sentence length to fill the gaps between sentences
-        if (sentenceCounter < 1) {
-            // very first video
-            const timestamps = sentence.timestamps;
-            sentence.duration = timestamps[timestamps.length - 1][2];
-        } else if (sentenceCounter + 1 !== sentencesCount) {
-            // every video except first and last
-            const previousSentence = transcription.sentences[sentenceCounter - 1];
-            const previousSentenceTimestamps = previousSentence.timestamps;
-            const previousSentenceLastTimestamp = previousSentenceTimestamps[previousSentenceTimestamps.length - 1][2];
-            const timestamps = sentence.timestamps;
-            sentence.duration = timestamps[timestamps.length - 1][2] - previousSentenceLastTimestamp;
-        } else {
-            const timestamps = sentence.timestamps;
-            sentence.duration = transcription.statistics.audioDuration - timestamps[0][1];
+    const analyzeParams = {
+        features: {
+            keywords: {},
+            entities: {},
+            categories: {},
+            concepts: {}
         }
-        sentenceCounter += 1;
+    };
+    for (let sentence of transcription.sentences) {
+        const response = await naturalLanguageUnderstanding.analyze({ ...analyzeParams, text: sentence.transcript });
+        sentence.analysis.results = response.result;
+        addAnalysisRank(sentence);
     }
     logging.info(NAMESPACE, 'Finished transcription analysis');
     return transcription;
+}
+
+function addAnalysisRank(sentence: Sentence) {
+    const lowestAcceptedRelevanceScore = 0.6;
+    // Pack together keywords, entities & concepts because they are more specific than categories
+    sentence.analysis.rank = [...sentence.analysis.results?.keywords!, ...sentence.analysis.results?.entities!, ...sentence.analysis.results?.concepts!];
+    // Filter out low confidence entries
+    sentence.analysis.rank = sentence.analysis.rank.filter((item) => {
+        if ('relevance' in item) {
+            return item.relevance! > lowestAcceptedRelevanceScore;
+        }
+        return false;
+    });
+    // Sort entries by relevance
+    sentence.analysis.rank.sort((a, b) => {
+        if ('relevance' in a && 'relevance' in b) {
+            return b.relevance! - a.relevance!;
+        }
+        return 1;
+    });
+    // Add categories at the end of keywords, entities & concepts after
+    // transforming categories returned from watson to a structure that matches
+    // the structure of keywords, entitites & concepts
+    const categories = sentence.analysis.results?.categories!.map((category) => {
+        let visuallyCategory: CategoriesResultVisually = {
+            text: category.label!,
+            relevance: category.score!
+        };
+        return visuallyCategory;
+    });
+    sentence.analysis.rank = [...sentence.analysis.rank, ...categories!];
 }
 
 export { transcribe, analyseTranscription, Transcription, Sentence };

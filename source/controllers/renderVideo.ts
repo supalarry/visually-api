@@ -28,6 +28,7 @@ const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const transcription = await transcribe(req.file.filename, req.file.mimetype, 'en-US_BroadbandModel');
         await analyseTranscription(transcription);
+        logging.deepLog(transcription);
         await fetchVideos(transcription);
         const audioUrl = path.join(__dirname, '..', '..', 'uploads', req.file.mimetype);
         const response = await submitVideosForRendering(transcription, audioUrl);

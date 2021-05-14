@@ -4,22 +4,6 @@ import logging from '../config/logging';
 const client = createClient(process.env.PEXELS_API_KEY!);
 
 const NAMESPACE = 'pexelsFetcher';
-const NO_VIDEOS_FOUND = 'No videos found';
-
-// async function fetchMultipleVideos(searchTerms: string[]): Promise<Video[]> {
-//     logging.info(NAMESPACE, 'Fetching videos');
-//     let videos: Video[] = [];
-//     for (let searchTerm of searchTerms) {
-//         const video = await fetchVideo(searchTerm);
-//         if (video) {
-//             videos.push(video);
-//         }
-//     }
-//     if (!videos.length) {
-//         throw new Error(NO_VIDEOS_FOUND);
-//     }
-//     return videos;
-// }
 
 async function fetchVideosForSearchTerm(query: string | undefined): Promise<Video[]> {
     let video: Video[];
@@ -47,17 +31,16 @@ async function fetchVideos(transcription: Transcription) {
     logging.info(NAMESPACE, 'Start fetching videos');
     for (let sentence of transcription.sentences) {
         const selectedVideos: Video[] = [];
-        let relevanceRank = 0;
+        let fetchingAttempts = 0;
         do {
-            const fetchedVideos = await fetchVideosForSearchTerm(sentence.relevanceRank?.[relevanceRank].text);
+            const fetchedVideos = await fetchVideosForSearchTerm(sentence.analysis.rank?.[fetchingAttempts].text);
             // check if search term returned any videos
             if (!fetchVideos.length) {
                 // if not, fetch again
-                relevanceRank += 1;
+                fetchingAttempts += 1;
                 continue;
             }
-            logging.info(NAMESPACE, `Successfully fetched ${fetchedVideos.length} videos`);
-            relevanceRank = 0;
+            logging.info(NAMESPACE, `Fetched ${fetchedVideos.length} videos`);
             // check how many videos to include based on sentence duration
             let selectedVideoDuration = 0;
             for (let video of fetchedVideos) {
@@ -70,8 +53,15 @@ async function fetchVideos(transcription: Transcription) {
                     break;
                 }
             }
+            // if fetched video duration is shorter than sentence duration, then fetch next search query
+            if (selectedVideoDuration < sentence.duration) {
+                fetchingAttempts += 1;
+                continue;
+            }
             // note the selected item for which videos were fetched
-            sentence.selectedForVideo = sentence.relevanceRank?.[relevanceRank];
+            sentence.analysis.fetchedVideoFor = sentence.analysis.rank?.[fetchingAttempts];
+            logging.info(NAMESPACE, `Chose ${selectedVideos.length} video/s`);
+            fetchingAttempts = 0;
         } while (!selectedVideos.length);
 
         sentence.videos = selectedVideos;
