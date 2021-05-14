@@ -37,7 +37,7 @@ const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
             url: renderedVideoUrl
         });
     } catch (error) {
-        logging.error(NAMESPACE, error.message);
+        logging.error(NAMESPACE, error.message, error);
         return res.status(500).json({
             error: error.message
         });

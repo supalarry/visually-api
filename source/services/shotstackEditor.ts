@@ -87,7 +87,7 @@ async function submitVideosForRendering(transcription: Transcription, audioUrl: 
         const data: ShotstackResponse = response.data;
         return data;
     } catch (error) {
-        logging.error(NAMESPACE, 'Failed submitting videos for rendering');
+        logging.error(NAMESPACE, 'Failed submitting videos for rendering', error);
         throw new Error(error.message);
     }
 }
