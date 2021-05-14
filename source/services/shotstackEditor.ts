@@ -67,8 +67,8 @@ async function submitVideosForRendering(transcription: Transcription, audioUrl: 
     const tracks: Track[] = [];
     tracks.push(track);
     const soundtrack: Soundtrack = {
-        // src: 'https://firebasestorage.googleapis.com/v0/b/visually-de279.appspot.com/o/audio.mp3?alt=media&token=6a42349b-a61f-4c37-8e8f-97177f9519c5',
-        src: 'https://firebasestorage.googleapis.com/v0/b/visually-de279.appspot.com/o/tigers.mp3?alt=media&token=4d720ce9-0019-42a2-8ea7-e9910c03782e',
+        src: 'https://firebasestorage.googleapis.com/v0/b/visually-de279.appspot.com/o/audio.mp3?alt=media&token=907c6693-006e-48cb-a205-8ed2d765c17d',
+        // src: 'https://firebasestorage.googleapis.com/v0/b/visually-de279.appspot.com/o/tigers.mp3?alt=media&token=4d720ce9-0019-42a2-8ea7-e9910c03782e',
         effect: 'fadeOut'
     };
     const timeline: Timeline = { tracks, soundtrack };

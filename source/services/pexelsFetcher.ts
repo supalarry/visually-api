@@ -28,7 +28,7 @@ async function fetchVideosForSearchTerm(query: string | undefined): Promise<Vide
         throw new Error('Fetching falsey value to fetchVideo is not allowed');
     }
     try {
-        logging.info(NAMESPACE, `Fetching video ${query}`);
+        logging.info(NAMESPACE, `Fetching videos for: "${query}"`);
         const videos: Videos | ErrorResponse = await client.videos.search({ query, per_page: 10 });
         if (!(videos as ErrorResponse).error) {
             video = (videos as Videos).videos;
@@ -56,6 +56,7 @@ async function fetchVideos(transcription: Transcription) {
                 relevanceRank += 1;
                 continue;
             }
+            logging.info(NAMESPACE, `Successfully fetched ${fetchedVideos.length} videos`);
             relevanceRank = 0;
             // check how many videos to include based on sentence duration
             let selectedVideoDuration = 0;
