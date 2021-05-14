@@ -39,7 +39,7 @@ type Timestamp = [string, number, number];
 interface Transcription {
     text: string;
     sentences: Sentence[];
-    originalAudioDuration: number;
+    statistics: Statistics;
 }
 
 interface Sentence {
@@ -50,6 +50,11 @@ interface Sentence {
     relevanceRank?: (KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually)[];
     selectedForVideo?: KeywordsResult | EntitiesResult | ConceptsResult | CategoriesResultVisually;
     videos?: Video[];
+}
+
+interface Statistics {
+    sentencesCount: number;
+    audioDuration: number;
 }
 
 /* Watson interfaces modified */
@@ -75,7 +80,10 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         processingMetricsInterval: 99999999999999999999999999999999999
     };
 
-    let audioDuration: number = 0;
+    let statistics: Statistics = {
+        audioDuration: 0,
+        sentencesCount: 0
+    };
 
     return new Promise((resolve, reject) => {
         // Create the stream.
@@ -96,7 +104,7 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         recognizeStream.on('data', function (event: TranscriptionResponse) {
             const results = event.results;
             if (event?.processing_metrics?.processed_audio?.received) {
-                audioDuration = Math.ceil(event.processing_metrics.processed_audio.received);
+                statistics.audioDuration = Math.ceil(event.processing_metrics.processed_audio.received);
             }
             event.results.forEach((result, index) => {
                 result.alternatives.forEach((alternative) => {
@@ -132,10 +140,11 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         });
         recognizeStream.on('close', function (event: unknown) {
             logging.info(NAMESPACE, LoggingMessages.FINISHED);
+            statistics.sentencesCount = length;
             resolve({
                 text,
                 sentences,
-                originalAudioDuration: audioDuration
+                statistics
             });
         });
     });
@@ -218,7 +227,7 @@ async function analyseTranscription(transcription: Transcription): Promise<Trans
             sentence.duration = timestamps[timestamps.length - 1][2] - previousSentenceLastTimestamp;
         } else {
             const timestamps = sentence.timestamps;
-            sentence.duration = transcription.originalAudioDuration - timestamps[0][1];
+            sentence.duration = transcription.statistics.audioDuration - timestamps[0][1];
         }
         sentenceCounter += 1;
     }

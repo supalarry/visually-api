@@ -28,6 +28,7 @@ async function fetchVideosForSearchTerm(query: string | undefined): Promise<Vide
         throw new Error('Fetching falsey value to fetchVideo is not allowed');
     }
     try {
+        logging.info(NAMESPACE, `Fetching video ${query}`);
         const videos: Videos | ErrorResponse = await client.videos.search({ query, per_page: 10 });
         if (!(videos as ErrorResponse).error) {
             video = (videos as Videos).videos;
@@ -37,7 +38,7 @@ async function fetchVideosForSearchTerm(query: string | undefined): Promise<Vide
         }
     } catch (error) {
         logging.error(NAMESPACE, `Failed fetching video "${query}"`);
-        logging.error(NAMESPACE, `Fetching failure reason: ${error.message}`);
+        logging.error(NAMESPACE, `Fetching failure reason: ${error.message}`, error);
         throw new Error(error.message);
     }
 }
