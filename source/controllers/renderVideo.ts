@@ -5,7 +5,7 @@ import logging from '../config/logging';
 import { submitVideosForRendering, pollShotstackForRenderedVideo, ShotstackResponse } from '../services/shotstackEditor';
 import path from 'path';
 
-const NAMESPACE = 'GenerateText controller';
+const NAMESPACE = 'Render video controller';
 enum LogMessages {
     START_TRANSCRIPTION = 'Starting video transcription',
     NO_FILE = 'Request does not have file attached'
@@ -16,7 +16,7 @@ enum LogMessages {
  ** To access property of text body: req.body.textKey
  */
 
-const generateText = async (req: Request, res: Response, next: NextFunction) => {
+const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file?.filename) {
         logging.error(NAMESPACE, LogMessages.NO_FILE);
         return res.status(400).json({
@@ -48,4 +48,4 @@ const generateText = async (req: Request, res: Response, next: NextFunction) => 
     }
 };
 
-export default { generateText };
+export { renderVideo };
