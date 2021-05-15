@@ -27,7 +27,7 @@ async function fetchVideosForSearchTerm(query: string | undefined): Promise<Vide
     }
 }
 
-async function fetchVideos(transcription: Transcription) {
+async function fetchVideos(transcription: Transcription): Promise<void> {
     logging.info(NAMESPACE, 'Start fetching videos');
     for (let sentence of transcription.sentences) {
         const selectedVideos: Video[] = [];

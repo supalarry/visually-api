@@ -28,7 +28,7 @@ const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
 
     logging.info(NAMESPACE, LogMessages.START_TRANSCRIPTION);
     try {
-        // upload audio to s3
+        // start uploading audio to s3 but also run transcription in parallel
         const uploadedAudio = uploadFile(req.file);
         // process transcription using watson
         const transcription = await transcribe(req.file, 'en-US_BroadbandModel');
