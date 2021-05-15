@@ -3,7 +3,9 @@ import { transcribe, analyseTranscription } from '../services/watson';
 import { fetchVideos } from '../services/pexelsFetcher';
 import logging from '../config/logging';
 import { submitVideosForRendering, pollShotstackForRenderedVideo, ShotstackResponse } from '../services/shotstackEditor';
-import path from 'path';
+import { uploadFile, deleteFile } from '../services/aws';
+import fs from 'fs';
+import util from 'util';
 
 const NAMESPACE = 'Render video controller';
 enum LogMessages {
@@ -26,16 +28,27 @@ const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
 
     logging.info(NAMESPACE, LogMessages.START_TRANSCRIPTION);
     try {
-        const transcription = await transcribe(req.file.filename, req.file.mimetype, 'en-US_BroadbandModel');
+        // upload audio to s3
+        const uploadedAudio = uploadFile(req.file);
+        // process transcription using watson
+        const transcription = await transcribe(req.file, 'en-US_BroadbandModel');
         await analyseTranscription(transcription);
-        logging.deepLog(transcription);
-        await fetchVideos(transcription);
-        const audioUrl = path.join(__dirname, '..', '..', 'uploads', req.file.mimetype);
-        const response = await submitVideosForRendering(transcription, audioUrl);
-        const renderedVideoUrl = await pollShotstackForRenderedVideo(response);
-        return res.status(200).json({
-            url: renderedVideoUrl
-        });
+        // get stock footage
+        const videosFetched = fetchVideos(transcription);
+        // render the video after audio has been uploaded & videos fetched
+        Promise.all([uploadedAudio, videosFetched])
+            .then(async (results) => {
+                const audio = results[0];
+                const ticket = await submitVideosForRendering(transcription, audio.Location);
+                const renderedVideoUrl = await pollShotstackForRenderedVideo(ticket);
+                await deleteAudioLocallyAndCloud(req.file, audio.Key);
+                return res.status(200).json({
+                    url: renderedVideoUrl
+                });
+            })
+            .catch((error) => {
+                throw error;
+            });
     } catch (error) {
         logging.error(NAMESPACE, error.message, error);
         return res.status(500).json({
@@ -43,5 +56,13 @@ const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
         });
     }
 };
+
+async function deleteAudioLocallyAndCloud(file: Express.Multer.File, cloudKey: string) {
+    // delete locally
+    const unlinkFile = util.promisify(fs.unlink);
+    await unlinkFile(file.path);
+    // delete from cloud
+    await deleteFile(cloudKey);
+}
 
 export { renderVideo };

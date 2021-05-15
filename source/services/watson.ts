@@ -67,7 +67,7 @@ interface CategoriesResultVisually extends CategoriesResult {
     relevance: number;
 }
 
-function transcribe(filename: string, mimetype: string, model: string): Promise<Transcription> {
+function transcribe(file: Express.Multer.File, model: string): Promise<Transcription> {
     // Watson set up
     const speechToText = new SpeechToTextV1({
         authenticator: new IamAuthenticator({
@@ -78,7 +78,7 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
     // Describe transcription settings
     const params = {
         objectMode: true,
-        contentType: mimetype,
+        contentType: file.mimetype,
         model: model,
         timestamps: true,
         processingMetrics: true,
@@ -102,10 +102,8 @@ function transcribe(filename: string, mimetype: string, model: string): Promise<
         const recognizeStream = speechToText.recognizeUsingWebSocket(params);
 
         // Pipe in the audio.
-        const filePath = path.join(__dirname, '..', '..', 'uploads', filename);
-
-        logging.info(NAMESPACE, `Start transcribing audio from ${filePath}`);
-        fs.createReadStream(filePath).pipe(recognizeStream);
+        logging.info(NAMESPACE, `Start transcribing audio from ${file.path}`);
+        fs.createReadStream(file.path).pipe(recognizeStream);
 
         recognizeStream.on('data', function (event: TranscriptionResponse) {
             if (event?.processing_metrics?.processed_audio?.received) {

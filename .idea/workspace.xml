@@ -2,9 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6fa00b4f-69a6-47ef-8574-3e89a1522546" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/source/controllers/renderVideo.ts" beforeDir="false" afterPath="$PROJECT_DIR$/source/controllers/renderVideo.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/services/pexelsFetcher.ts" beforeDir="false" afterPath="$PROJECT_DIR$/source/services/pexelsFetcher.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/services/watson.ts" beforeDir="false" afterPath="$PROJECT_DIR$/source/services/watson.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/source/services/firebase.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/source/services/shotstackEditor.ts" beforeDir="false" afterPath="$PROJECT_DIR$/source/services/shotstackEditor.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/yarn.lock" beforeDir="false" afterPath="$PROJECT_DIR$/yarn.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,6 +28,12 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
     <property name="ts.external.directory.path" value="$PROJECT_DIR$/node_modules/typescript/lib" />
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
@@ -36,7 +44,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1620990833806</updated>
-      <workItem from="1620990837484" duration="152000" />
+      <workItem from="1620990837484" duration="468000" />
     </task>
     <servers />
   </component>
