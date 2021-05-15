@@ -61,6 +61,7 @@ async function deleteAudioLocallyAndCloud(file: Express.Multer.File, cloudKey: s
     // delete locally
     const unlinkFile = util.promisify(fs.unlink);
     await unlinkFile(file.path);
+    logging.info(NAMESPACE, 'Deleted file locally');
     // delete from cloud
     await deleteFile(cloudKey);
 }
