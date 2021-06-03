@@ -37,7 +37,7 @@ const getTimeStamp = (): string => {
 };
 
 const deepLog = <T>(namespace: string, message: string, object: T): void => {
-    console.log(util.inspect(object, { showHidden: false, depth: null }));
+    console.log(`[${getTimeStamp()}] [DEEPLOG] [${namespace}] ${message} ${util.inspect(object, { showHidden: false, depth: null })}`);
 };
 
 export default {
