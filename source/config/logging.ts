@@ -36,7 +36,7 @@ const getTimeStamp = (): string => {
     return new Date().toISOString();
 };
 
-const deepLog = <T>(object: T): void => {
+const deepLog = <T>(namespace: string, message: string, object: T): void => {
     console.log(util.inspect(object, { showHidden: false, depth: null }));
 };
 
