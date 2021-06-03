@@ -32,12 +32,18 @@ const renderVideo = async (req: Request, res: Response, next: NextFunction) => {
         const uploadedAudio = uploadFile(req.file);
         // process transcription using watson
         const transcription = await transcribe(req.file, 'en-US_BroadbandModel');
+        // Uncomment next "logging" line for debugging purposes to go through process step by step
+        // logging.deepLog(NAMESPACE, 'Received transcription', transcription);
         await analyseTranscription(transcription);
+        // Uncomment next "logging" line for debugging purposes to go through process step by step
+        // logging.deepLog(NAMESPACE, 'Received analysis of transcription', transcription);
         // get stock footage
         const videosFetched = fetchVideos(transcription);
         // render the video after audio has been uploaded & videos fetched
         Promise.all([uploadedAudio, videosFetched])
             .then(async (results) => {
+                // Uncomment next "logging" line for debugging purposes to go through process step by step
+                // logging.deepLog(NAMESPACE, 'Stock videos chosen for each sentence', transcription);
                 const audio = results[0];
                 const ticket = await submitVideosForRendering(transcription, audio.Location);
                 const renderedVideoUrl = await pollShotstackForRenderedVideo(ticket);
