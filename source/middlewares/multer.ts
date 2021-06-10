@@ -6,7 +6,7 @@ enum LoggingMessages {
     INVALID_FILE_TYPE = 'Invalid file type'
 }
 
-const REQUEST_FILE_KEY = 'video';
+const REQUEST_FILE_KEY = 'file';
 const DESTINATION_FOLDER = 'uploads/';
 
 // Tell where to store the file & with what name
