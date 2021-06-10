@@ -1,11 +1,18 @@
 import http from 'http';
 import express from 'express';
+import cors from 'cors';
 import logging from './config/logging';
 import config from './config/config';
 import renderVideoRoutes from './routes/renderVideo';
 
 const NAMESPACE = 'Server';
 const router = express();
+
+const corsOptions: cors.CorsOptions = {
+    origin: process.env.CLIENT_URL
+};
+
+router.use(cors(corsOptions));
 
 /** Log the request */
 router.use((req, res, next) => {
