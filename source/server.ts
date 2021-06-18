@@ -4,6 +4,7 @@ import cors from 'cors';
 import logging from './config/logging';
 import config from './config/config';
 import renderVideoRoutes from './routes/renderVideo';
+import userRoutes from './routes/user';
 
 const NAMESPACE = 'Server';
 const router = express();
@@ -46,6 +47,7 @@ router.use((req, res, next) => {
 
 /** Routes go here */
 router.use('/api/', renderVideoRoutes);
+router.use('/api/', userRoutes);
 
 /** Error handling */
 router.use((req, res, next) => {
